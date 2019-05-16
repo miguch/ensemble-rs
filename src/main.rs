@@ -2,8 +2,8 @@ use rayon::prelude::*;
 
 mod data_frame;
 mod tree;
-use data_frame::DataFrame;
 
+use std::cmp::Ordering;
 use std::path::*;
 use std::time;
 
@@ -39,5 +39,15 @@ fn main() {
     println!("Test data shape: {:?}", test_data.shape);
     println!("Load time: {}ms", start.elapsed().unwrap().as_millis());
 
-    println!("{:?}", train_data.get_columns(vec![2, 3]));
+    let mut col = train_data.get_columns(&[2]);
+    let start = time::SystemTime::now();
+    col.data
+        .par_sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
+    println!("Par Sort time: {}ms", start.elapsed().unwrap().as_millis());
+
+    let mut col = train_data.get_columns(&[2]);
+    let start = time::SystemTime::now();
+    col.data
+        .sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
+    println!("Sort time: {}ms", start.elapsed().unwrap().as_millis());
 }
