@@ -1,120 +1,75 @@
 use csv;
+use num_traits::*;
 use rayon::prelude::*;
-use std::error::Error;
 use std::fs::File;
 use std::path::PathBuf;
 
-use ndarray::{arr2, Array2, Shape};
+use ndarray::*;
 
-#[derive(Clone, Debug)]
-pub struct DataFrame<V> {
-    pub data: Vec<V>,
-    pub shape: (usize, usize),
+/// The type used for values in dataframe
+pub type V = f64;
+
+pub type DataFrame = Array2<V>;
+
+#[derive(Debug, Clone)]
+pub struct StatsFeature {
+    pub cols_mean: Array1<V>,
+    pub cols_std: Array1<V>,
 }
 
-impl<V: Copy + Clone + Send + Sync + Default> DataFrame<V> {
-    pub fn new() -> Self {
+impl StatsFeature {
+    #[allow(dead_code)]
+    pub fn from_df_cols(df: &DataFrame) -> Self {
         Self {
-            data: Vec::new(),
-            shape: (0, 0),
+            cols_mean: df.mean_axis(Axis(0)),
+            cols_std: df.std_axis(Axis(0), 1.0),
         }
     }
 
-    pub fn from_data(buf: Vec<Vec<V>>) -> Self {
-        if buf.is_empty() {
-            Self {
-                data: Vec::new(),
-                shape: (0, 0),
-            }
-        } else {
-            let shape = (buf.len(), buf[0].len());
-            for row in &buf {
-                if row.len() != shape.1 {
-                    panic!("Row size inconsistent");
-                }
-            }
-            let mut data = Vec::with_capacity(shape.1 * shape.0);
-            for row in buf {
-                data.extend(row);
-            }
-            Self { data, shape }
-        }
-    }
-
-    pub fn get_rows(&self, indexes: &[usize]) -> Self {
-        let mut result = Vec::with_capacity(indexes.len() * self.shape.1);
-        for index in indexes {
-            result.extend(&self.data[(index * self.shape.1)..((index + 1) * self.shape.1)]);
-        }
+    #[allow(dead_code)]
+    pub fn from_df_rows(df: &DataFrame) -> Self {
         Self {
-            data: result,
-            shape: (indexes.len(), self.shape.1),
+            cols_mean: df.mean_axis(Axis(1)),
+            cols_std: df.std_axis(Axis(1), 1.0),
         }
-    }
-
-    pub fn get_columns(&self, indexes: &[usize]) -> Self {
-        let mut result = Vec::with_capacity(indexes.len() * self.shape.0);
-        // Get column data in each row
-        for i in 0..self.shape.0 {
-            let index_base = i * self.shape.1;
-            result.extend::<Vec<V>>(
-                indexes
-                    .iter()
-                    .map(|index| -> V { self.data[index_base + index] })
-                    .collect(),
-            )
-        }
-        Self {
-            data: result,
-            shape: (self.shape.0, indexes.len()),
-        }
-    }
-
-    pub fn reshape(&mut self, new_shape: (usize, usize)) {
-        if new_shape.1 * new_shape.0 != self.shape.1 * self.shape.0 {
-            panic!(
-                "Unable to resize. old size: {:?}, new size: {:?}",
-                self.shape, new_shape
-            );
-        }
-        self.shape = new_shape;
     }
 }
 
-use std::fmt;
-impl<V: fmt::Display> fmt::Display for DataFrame<V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "[\n")?;
-        for i in 0..self.shape.0 {
-            write!(f, " [")?;
-            let base = i * self.shape.1;
-            for k in 0..self.shape.1 {
-                write!(f, "{}", self.data[base + k])?;
-                if k != self.shape.1 - 1 {
-                    write!(f, ",")?;
-                }
-            }
-            write!(f, "],\n")?;
+pub fn df_from_data(buf: Vec<Vec<V>>) -> DataFrame {
+    if buf.is_empty() {
+        Array2::zeros((0, 0))
+    } else {
+        let shape = (buf.len(), buf[0].len());
+        let mut flatten = Vec::with_capacity(shape.0 * shape.1);
+        for row in buf {
+            flatten.extend(row);
         }
-        write!(f, "]")
+        let arr = Array2::from_shape_vec(shape, flatten).unwrap();
+        arr
     }
 }
 
-pub fn read_csvs(file_paths: Vec<PathBuf>) -> DataFrame<f64> {
+#[allow(dead_code)]
+pub fn sort_f64_vec(v: &mut Vec<V>) {
+    use std::cmp::Ordering;
+    v.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
+}
+
+pub fn read_csvs(file_paths: Vec<PathBuf>) -> DataFrame {
     let mut data_frame = Vec::new();
-    let frames: Vec<Vec<Vec<f64>>> = file_paths.par_iter().map(|name| load_csv(name)).collect();
+    let frames: Vec<Vec<Vec<V>>> = file_paths.par_iter().map(|name| load_csv(name)).collect();
 
     for frame in frames {
         data_frame.extend(frame);
     }
 
-    DataFrame::<f64>::from_data(data_frame)
+    df_from_data(data_frame)
 }
 
-fn load_csv(file_path: &PathBuf) -> Vec<Vec<f64>> {
-    let mut file = match File::open(file_path) {
+fn load_csv(file_path: &PathBuf) -> Vec<Vec<V>> {
+    let file = match File::open(file_path) {
         Err(e) => panic!("couldn't open {}: {}", file_path.display(), e),
-        Ok(mut f) => f,
+        Ok(f) => f,
     };
     let mut reader = csv::ReaderBuilder::new()
         .has_headers(false)
@@ -125,7 +80,7 @@ fn load_csv(file_path: &PathBuf) -> Vec<Vec<f64>> {
         data_frame.push(
             record
                 .iter()
-                .map(|e: &str| e.parse::<f64>().unwrap())
+                .map(|e: &str| e.parse::<V>().unwrap())
                 .collect(),
         );
     }
