@@ -1,9 +1,9 @@
 use crate::data_frame::*;
 
 pub trait Learner {
-    /// df: `[{features}, label]`
+    /// df: `[samples, features]` y: `[1, samples]`
     fn fit(&mut self, x: &DataFrame, y: &DataFrame);
 
-    ///df: `[{features}]`
-    fn predict(&self, df: &DataFrame);
+    /// df: `[sample, features]`
+    fn predict(&self, df: &DataFrame) -> DataFrame;
 }

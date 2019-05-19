@@ -4,6 +4,7 @@ use crate::tree::NodeInfo::Stem;
 use crate::utils::numeric::*;
 use crate::utils::sort_array::*;
 use data_frame::*;
+use log::*;
 use ndarray::*;
 use num_traits::*;
 use rand::prelude::*;
@@ -14,7 +15,7 @@ use std::collections::vec_deque::VecDeque;
 use std::collections::*;
 use std::time;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DecisionTree {
     /// Nodes in the tree as a list of nodes
     pub nodes: Vec<TreeNode<V>>,
@@ -30,7 +31,7 @@ pub struct DecisionTree {
     pub max_bin: usize,
 }
 
-#[derive(PartialEq, Eq, Hash)]
+#[derive(PartialEq, Eq, Hash, Clone)]
 pub enum DecisionTreeConfig {
     MaxDepth(usize),
     MaxFeatures(usize),
@@ -39,7 +40,7 @@ pub enum DecisionTreeConfig {
     MaxBin(usize),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum NodeInfo<V> {
     Leaf,
     Stem {
@@ -54,7 +55,7 @@ pub enum NodeInfo<V> {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TreeNode<V> {
     pub value: V,
     pub index: usize,
@@ -142,14 +143,17 @@ impl DecisionTree {
             > = current_nodes
                 .iter()
                 .map(|node_index| {
-                    // Stop split when reach max depth
+                    // Stop split when reach max depthor
                     if self.nodes[*node_index].depth >= self.max_depth {
                         return None;
                     }
 
                     let curr_samples = node_sample_index.remove(node_index).unwrap();
-                    // No split when there are not many samples in node
-                    if curr_samples.len() < self.min_samples_split {
+                    // No split when there are not many samples in node or
+                    // samples can not be divided to bins
+                    if curr_samples.len() < self.min_samples_split
+                        || curr_samples.len() < self.max_bin
+                    {
                         return None;
                     }
 
@@ -196,6 +200,7 @@ impl DecisionTree {
                                     feat_labels.push(labels[[0, *index]]);
                                 }
                             }
+                            // search each bin for resulting split info
                             for bin in &bins {
                                 let (left, right) = feat_labels.split_at(*bin);
                                 let left_sqr_err = slice_variance(left);
@@ -214,12 +219,17 @@ impl DecisionTree {
                                 best_sqr_err,
                                 best_left_err,
                                 best_right_err,
-                                // Bug!
-                                bins_index[best_split / bin_size - 1],
+                                // don't panic when this if there is no split!
+                                if best_split == 0 {
+                                    1
+                                } else {
+                                    bins_index[best_split / bin_size - 1]
+                                },
                             )
                         })
                         .collect();
 
+                    // sort splits to find the split that minimize the new variance
                     let min_split = feature_split
                         .iter()
                         .min_by(|a, b| a.2.partial_cmp(&b.2).unwrap_or(Ordering::Equal));
@@ -244,7 +254,7 @@ impl DecisionTree {
                             // find the split point value
                             let orders: &Vec<usize> = &feature_order[split.0];
                             let mut visited = 0;
-                            let mut split_val: V = std::f64::INFINITY;
+                            let mut split_val: V = V::infinity();
                             let mut index_to_write = &mut left_index;
                             let mut right_label_sum: V = 0.0;
                             let mut left_label_sum: V = 0.0;
@@ -263,6 +273,7 @@ impl DecisionTree {
                                 }
                             }
 
+                            // create left and right node
                             let left_node = TreeNode {
                                 value: left_label_sum / left_index.len() as V,
                                 index: 0,
@@ -278,6 +289,7 @@ impl DecisionTree {
                                 info: NodeInfo::Leaf,
                             };
 
+                            // update current node
                             self.nodes[*node_index].variance = split.2;
                             // change current node to stem
                             self.nodes[*node_index].info = Stem {
@@ -293,30 +305,33 @@ impl DecisionTree {
                 })
                 .collect();
 
+            // prepare for next round grow
             current_nodes.clear();
             for mut node_pair in next_nodes_pairs {
                 if let None = node_pair {
                     continue;
                 } else if let Some(mut node_pair) = node_pair {
                     let curr_nodes_len = self.nodes.len();
-                    println!(
+                    debug!(
                         "Left: {}, right: {}, depth: {}",
                         node_pair.2.len(),
                         node_pair.4.len(),
                         node_pair.1.depth
                     );
-                    println!(
+                    debug!(
                         "variance: {} {}\n value: {} {}",
-                        node_pair.1.variance, node_pair.3.variance,
-                        node_pair.1.value, node_pair.3.value
+                        node_pair.1.variance,
+                        node_pair.3.variance,
+                        node_pair.1.value,
+                        node_pair.3.value
                     );
-                    // Left child
+                    // add Left child
                     node_pair.1.index = curr_nodes_len;
                     self.nodes.push(node_pair.1);
                     current_nodes.push(curr_nodes_len);
                     node_sample_index.insert(curr_nodes_len, node_pair.2);
-                    println!("Added {} {}", curr_nodes_len, curr_nodes_len + 1);
-                    // Right Child
+                    debug!("Added {} {}", curr_nodes_len, curr_nodes_len + 1);
+                    // add Right Child
                     node_pair.3.index = curr_nodes_len + 1;
                     self.nodes.push(node_pair.3);
                     current_nodes.push(curr_nodes_len + 1);
@@ -330,6 +345,7 @@ impl DecisionTree {
                         ref mut right,
                     } = self.nodes[node_pair.0].info
                     {
+                        debug!("split on {}: {}", feature, param);
                         *left = curr_nodes_len;
                         *right = curr_nodes_len + 1;
                     } else {
@@ -356,7 +372,7 @@ impl Learner for DecisionTree {
                 perm.indices
             })
             .collect();
-        println!(
+        info!(
             "global sorting time: {}ms",
             start.elapsed().unwrap().as_millis()
         );
@@ -364,7 +380,41 @@ impl Learner for DecisionTree {
         self.build_tree(features_order, x, y);
     }
 
-    fn predict(&self, df: &DataFrame) {
-        unimplemented!()
+    fn predict(&self, df: &DataFrame) -> DataFrame {
+        if self.nodes.is_empty() {
+            panic!("Model is not trained!");
+        }
+        let pred: Vec<V> = (0..df.rows())
+            .into_par_iter()
+            .map(|row_index| {
+                // start from root
+                let mut current_node = 0 as usize;
+                let mut value = self.nodes[current_node].value;
+                loop {
+                    match &self.nodes[current_node].info {
+                        Stem {
+                            ref feature,
+                            ref param,
+                            ref left,
+                            ref right,
+                        } => {
+                            let row_val = df[[row_index, *feature]];
+                            if row_val <= *param {
+                                current_node = *left;
+                            } else {
+                                current_node = *right;
+                            }
+                            value = self.nodes[current_node].value;
+                        }
+                        NodeInfo::Leaf => {
+                            break;
+                        }
+                    }
+                }
+                value
+            })
+            .collect();
+
+        DataFrame::from_shape_vec((1, df.rows()), pred).unwrap()
     }
 }

@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use ndarray::*;
 
 /// The type used for values in dataframe
-pub type V = f64;
+pub type V = f32;
 
 pub type DataFrame = Array2<V>;
 

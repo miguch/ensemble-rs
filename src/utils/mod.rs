@@ -1,5 +1,4 @@
 pub mod cross_validate;
-pub mod metrics;
 pub mod numeric;
 pub mod sort_array;
 

@@ -37,7 +37,6 @@ pub fn slice_variance(a: &[V]) -> V {
 /// a and b should both be of size (1, sample_len)
 pub fn r2_score(true_y: &DataFrame, pred_y: &DataFrame) -> V {
     let true_mean = true_y.mean_axis(Axis(1))[0];
-    println!("{}", true_mean);
     assert_eq!(true_y.shape(), pred_y.shape());
     let mut square_error: V = 0.0;
     let mut mean_diff: V = 0.0;
@@ -48,6 +47,7 @@ pub fn r2_score(true_y: &DataFrame, pred_y: &DataFrame) -> V {
     1.0 - (square_error / mean_diff)
 }
 
+// Test will only pass if V is f64
 #[cfg(test)]
 mod test {
     use crate::utils::numeric::{mse_score, r2_score};
