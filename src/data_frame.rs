@@ -5,9 +5,10 @@ use std::fs::File;
 use std::path::PathBuf;
 
 use ndarray::*;
+use std::io::{BufWriter, Write};
 
 /// The type used for values in dataframe
-pub type V = f32;
+pub type V = f64;
 
 pub type DataFrame = Array2<V>;
 
@@ -64,6 +65,26 @@ pub fn read_csvs(file_paths: Vec<PathBuf>) -> DataFrame {
     }
 
     df_from_data(data_frame)
+}
+
+pub fn save_csv(df: &DataFrame, file_path: PathBuf, headers: &[&str]) {
+    assert_eq!(headers.len(), df.cols());
+    let file = File::create(file_path).unwrap();
+    let mut writer = BufWriter::new(file);
+    writer
+        .write(headers.join(",").as_bytes())
+        .expect("Unable to write data");
+    writer.write(b"\n").expect("Unable to write data");
+    for i in 0..df.rows() {
+        let row: Vec<String> = (0..df.cols())
+            .into_iter()
+            .map(|c| df[[i, c]].to_string())
+            .collect();
+        writer
+            .write(row.join(",").as_bytes())
+            .expect("Unable to write data");
+        writer.write(b"\n").expect("Unable to write data");
+    }
 }
 
 fn load_csv(file_path: &PathBuf) -> Vec<Vec<V>> {

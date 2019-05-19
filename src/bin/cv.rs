@@ -1,18 +1,15 @@
-pub mod data_frame;
-pub mod learner;
-pub mod tree;
-pub mod utils;
-
+use ensembles_rs::data_frame;
+use ensembles_rs::tree;
+use ensembles_rs::tree::DecisionTreeConfig;
+use ensembles_rs::utils::cross_validate;
+use ensembles_rs::utils::numeric;
 use rayon::prelude::*;
 use std::collections::HashSet;
-use utils::cross_validate;
-use utils::numeric;
+
+use log::*;
 
 use pretty_env_logger;
-#[macro_use]
-extern crate log;
 
-use crate::tree::DecisionTreeConfig;
 use std::path::*;
 use std::time;
 
@@ -59,7 +56,7 @@ fn main() {
             samples_count / 10000000,
         ));
         configs.insert(DecisionTreeConfig::MaxBin(200));
-        configs.insert(DecisionTreeConfig::MaxDepth(8));
+        configs.insert(DecisionTreeConfig::MaxDepth(10));
         configs
     };
 

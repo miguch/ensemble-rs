@@ -199,7 +199,7 @@ impl DecisionTree {
                                     feat_labels.push(labels[[0, *index]]);
                                 }
                             }
-                            // search each bin for resulting split info
+                            // search each bins for resulting split info
                             for bin in &bins {
                                 let (left, right) = feat_labels.split_at(*bin);
                                 let left_sqr_err = slice_variance(left);

@@ -95,6 +95,12 @@ impl KFold {
                 .push(start.elapsed().unwrap().as_millis());
 
             info!(
+                "train time: {}, predict time: {}",
+                results.train_time.last().unwrap(),
+                results.predict_time.last().unwrap(),
+            );
+
+            info!(
                 "train: {}, validation: {}",
                 results.train_score.last().unwrap(),
                 results.validation_score.last().unwrap(),

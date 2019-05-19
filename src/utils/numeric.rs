@@ -1,7 +1,6 @@
 use crate::data_frame::*;
 use ndarray::*;
 
-
 /// a and b should both be of size (1, sample_len)
 pub fn mse_score(a: &DataFrame, b: &DataFrame) -> V {
     let mut result: V = 0.0;
