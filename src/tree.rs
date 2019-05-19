@@ -63,6 +63,24 @@ pub struct TreeNode<V> {
     pub info: NodeInfo<V>,
 }
 
+/// Used to create thread-safe parallel split by node
+struct SplitInfo<V> {
+    /// The index of the node to be split
+    pub index: usize,
+    /// The new stem the split node about to become
+    pub new_stem: NodeInfo<V>,
+    /// The new variance of the current node
+    pub new_variance: V,
+    /// The left node object
+    pub left_node: TreeNode<V>,
+    /// The right node object
+    pub right_node: TreeNode<V>,
+    /// The indexes of samples to be in the left node
+    pub left_indexes: HashSet<usize>,
+    /// The indexes of samples to be in the right node
+    pub right_indexes: HashSet<usize>,
+}
+
 // Parallel stuff
 unsafe impl<V: Send + Sync> Sync for NodeInfo<V> {}
 unsafe impl<V: Send + Sync> Send for NodeInfo<V> {}
@@ -70,6 +88,8 @@ unsafe impl<V: Send + Sync> Sync for TreeNode<V> {}
 unsafe impl<V: Send + Sync> Send for TreeNode<V> {}
 unsafe impl Sync for DecisionTree {}
 unsafe impl Send for DecisionTree {}
+unsafe impl<V: Send + Sync> Sync for SplitInfo<V> {}
+unsafe impl<V: Send + Sync> Send for SplitInfo<V> {}
 
 impl DecisionTree {
     pub fn new() -> Self {
@@ -121,6 +141,7 @@ impl DecisionTree {
         let mut current_nodes: Vec<usize> = vec![0];
 
         // Loop till the tree has no nodes to be further split
+        // Each loop will grow another level in the resulting tree
         // a node stop being split when it reaches the max depth
         // or its number of records is lower than min_sample_split
         loop {
@@ -129,25 +150,16 @@ impl DecisionTree {
             }
 
             // Parallel perform split for current leaf nodes
-            // Get the two children from the splits and the index in the two children
-            // (current_index, left, left_samples, right, right_samples)
-            let next_nodes_pairs: Vec<
-                Option<(
-                    usize,
-                    TreeNode<V>,
-                    HashSet<usize>,
-                    TreeNode<V>,
-                    HashSet<usize>,
-                )>,
-            > = current_nodes
-                .iter()
+            // Get split info about the current node and two children
+            let next_nodes_pairs: Vec<Option<SplitInfo<V>>> = current_nodes
+                .par_iter()
                 .map(|node_index| {
                     // Stop split when reach max depthor
                     if self.nodes[*node_index].depth >= self.max_depth {
                         return None;
                     }
 
-                    let curr_samples = node_sample_index.remove(node_index).unwrap();
+                    let curr_samples = node_sample_index.get(node_index).unwrap();
                     // No split when there are not many samples in node or
                     // samples can not be divided to bins
                     if curr_samples.len() < self.min_samples_split
@@ -286,53 +298,64 @@ impl DecisionTree {
                                 info: NodeInfo::Leaf,
                             };
 
-                            // update current node
-                            self.nodes[*node_index].variance = split.2;
-                            // change current node to stem
-                            self.nodes[*node_index].info = Stem {
-                                feature: split.0,
-                                param: split_val,
-                                left: 0,
-                                right: 0,
-                            };
-
-                            Some((*node_index, left_node, left_index, right_node, right_index))
+                            Some(SplitInfo {
+                                index: *node_index,
+                                new_stem: Stem {
+                                    feature: split.0,
+                                    param: split_val,
+                                    left: 0,
+                                    right: 0,
+                                },
+                                new_variance: split.2,
+                                left_node,
+                                right_node,
+                                left_indexes: left_index,
+                                right_indexes: right_index,
+                            })
                         }
                     }
                 })
                 .collect();
 
             // prepare for next round grow
+            node_sample_index.clear();
             current_nodes.clear();
+
+            // Update everything from split info in serial
             for node_pair in next_nodes_pairs {
                 if let None = node_pair {
                     continue;
-                } else if let Some(mut node_pair) = node_pair {
+                } else if let Some(mut split_info) = node_pair {
                     let curr_nodes_len = self.nodes.len();
+
+                    // Update the split node
+                    self.nodes[split_info.index].variance = split_info.new_variance;
+                    self.nodes[split_info.index].info = split_info.new_stem;
+
                     debug!(
                         "Left: {}, right: {}, depth: {}",
-                        node_pair.2.len(),
-                        node_pair.4.len(),
-                        node_pair.1.depth
+                        split_info.left_indexes.len(),
+                        split_info.right_indexes.len(),
+                        split_info.left_node.depth
                     );
                     debug!(
                         "variance: {} {}\n value: {} {}",
-                        node_pair.1.variance,
-                        node_pair.3.variance,
-                        node_pair.1.value,
-                        node_pair.3.value
+                        split_info.left_node.variance,
+                        split_info.right_node.variance,
+                        split_info.left_node.value,
+                        split_info.right_node.value
                     );
                     // add Left child
-                    node_pair.1.index = curr_nodes_len;
-                    self.nodes.push(node_pair.1);
+                    split_info.left_node.index = curr_nodes_len;
+                    self.nodes.push(split_info.left_node);
                     current_nodes.push(curr_nodes_len);
-                    node_sample_index.insert(curr_nodes_len, node_pair.2);
+                    node_sample_index.insert(curr_nodes_len, split_info.left_indexes);
                     debug!("Added {} {}", curr_nodes_len, curr_nodes_len + 1);
                     // add Right Child
-                    node_pair.3.index = curr_nodes_len + 1;
-                    self.nodes.push(node_pair.3);
+                    split_info.right_node.index = curr_nodes_len + 1;
+                    self.nodes.push(split_info.right_node);
                     current_nodes.push(curr_nodes_len + 1);
-                    node_sample_index.insert(curr_nodes_len + 1, node_pair.4);
+                    node_sample_index.insert(curr_nodes_len + 1, split_info.right_indexes);
 
                     //set left and right for parent node
                     if let NodeInfo::Stem {
@@ -340,7 +363,7 @@ impl DecisionTree {
                         ref mut param,
                         ref mut left,
                         ref mut right,
-                    } = self.nodes[node_pair.0].info
+                    } = self.nodes[split_info.index].info
                     {
                         debug!("split on {}: {}", feature, param);
                         *left = curr_nodes_len;
@@ -363,9 +386,6 @@ impl Learner for DecisionTree {
             .into_par_iter()
             .map(|col| {
                 let perm = x.sort_column(col);
-                //                x.slice(s![.., col..col + 1])
-                //                    .to_owned()
-                //                    .permute_with_index(&perm)
                 perm.indices
             })
             .collect();

@@ -55,7 +55,7 @@ fn main() {
         configs.insert(DecisionTreeConfig::MinSamplesSplit(
             samples_count / 10000000,
         ));
-        configs.insert(DecisionTreeConfig::MaxBin(200));
+        configs.insert(DecisionTreeConfig::MaxBin(300));
         configs.insert(DecisionTreeConfig::MaxDepth(10));
         configs
     };
