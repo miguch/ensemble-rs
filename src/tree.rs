@@ -5,13 +5,12 @@ use crate::utils::numeric::*;
 use crate::utils::sort_array::*;
 use data_frame::*;
 use log::*;
-use ndarray::*;
 use num_traits::*;
 use rand::prelude::*;
-use rand::prelude::*;
+
 use rayon::prelude::*;
 use std::cmp::Ordering;
-use std::collections::vec_deque::VecDeque;
+
 use std::collections::*;
 use std::time;
 
@@ -253,7 +252,6 @@ impl DecisionTree {
 
                             // find the split point value
                             let orders: &Vec<usize> = &feature_order[split.0];
-                            let mut visited = 0;
                             let mut split_val: V = V::infinity();
                             let mut index_to_write = &mut left_index;
                             let mut right_label_sum: V = 0.0;
@@ -269,7 +267,6 @@ impl DecisionTree {
                                         index_to_write = &mut right_index;
                                         sum_to_add = &mut right_label_sum;
                                     }
-                                    visited += 1;
                                 }
                             }
 
@@ -307,7 +304,7 @@ impl DecisionTree {
 
             // prepare for next round grow
             current_nodes.clear();
-            for mut node_pair in next_nodes_pairs {
+            for node_pair in next_nodes_pairs {
                 if let None = node_pair {
                     continue;
                 } else if let Some(mut node_pair) = node_pair {

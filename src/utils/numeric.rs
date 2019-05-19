@@ -1,7 +1,6 @@
 use crate::data_frame::*;
 use ndarray::*;
-use num_traits::*;
-use std::num::*;
+
 
 /// a and b should both be of size (1, sample_len)
 pub fn mse_score(a: &DataFrame, b: &DataFrame) -> V {
@@ -51,6 +50,7 @@ pub fn r2_score(true_y: &DataFrame, pred_y: &DataFrame) -> V {
 #[cfg(test)]
 mod test {
     use crate::utils::numeric::{mse_score, r2_score};
+    use ndarray::*;
 
     #[test]
     fn mse_test() {

@@ -1,24 +1,18 @@
-mod data_frame;
-mod learner;
-mod tree;
-mod utils;
-use learner::*;
+pub mod data_frame;
+pub mod learner;
+pub mod tree;
+pub mod utils;
+
 use rayon::prelude::*;
 use std::collections::HashSet;
 use utils::cross_validate;
 use utils::numeric;
-use utils::sort_array::*;
-
-#[macro_use]
-extern crate ndarray;
 
 use pretty_env_logger;
 #[macro_use]
 extern crate log;
 
 use crate::tree::DecisionTreeConfig;
-use ndarray::prelude::*;
-use ndarray::*;
 use std::path::*;
 use std::time;
 
@@ -69,7 +63,7 @@ fn main() {
         configs
     };
 
-    let mut tree = tree::DecisionTree::new_with_config(tree_config);
+    let tree = tree::DecisionTree::new_with_config(tree_config);
 
     let folds = cross_validate::KFold::new(3);
     let results = folds.cross_validate(tree, &train_data, &label_data, numeric::r2_score);

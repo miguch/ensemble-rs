@@ -2,7 +2,7 @@ use crate::data_frame::*;
 use crate::learner::Learner;
 use log::*;
 use rand::prelude::*;
-use std::collections::{HashMap, HashSet};
+
 use std::time;
 
 pub struct KFold {

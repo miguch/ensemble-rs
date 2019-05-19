@@ -1,8 +1,7 @@
 use crate::data_frame::*;
 /// Adapted from ndarray/examples
 use ndarray::prelude::*;
-use ndarray::*;
-use ndarray::{Data, RemoveAxis, Zip};
+use ndarray::{Data};
 
 use rayon::prelude::*;
 
@@ -98,7 +97,7 @@ impl PermuteArray for Array2<V> {
         for index in &perm.indices {
             v.extend(self.row(*index).iter().cloned());
         }
-        use ndarray::ShapeBuilder;
+        
         Array2::from_shape_vec((self.rows(), self.cols()), v).unwrap()
     }
 
@@ -114,7 +113,7 @@ impl PermuteArray for Array2<V> {
             v.extend(self.row(*index).iter().cloned());
             v.push(*index as V)
         }
-        use ndarray::ShapeBuilder;
+        
         Array2::from_shape_vec((self.rows(), self.cols() + 1), v).unwrap()
     }
 }
