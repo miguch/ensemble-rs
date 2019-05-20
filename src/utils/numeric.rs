@@ -11,6 +11,16 @@ pub fn mse_score(a: &DataFrame, b: &DataFrame) -> V {
     (result / a.cols() as V)
 }
 
+/// a and b should both be of size (1, sample_len)
+pub fn slice_mse_score(a: &[V], b: &[V]) -> V {
+    let mut result: V = 0.0;
+    assert_eq!(a.len(), b.len());
+    for i in 0..a.len() {
+        result += (a[i] - b[i]).powi(2);
+    }
+    (result / a.len() as V)
+}
+
 /// Calculate the square sum of all elements in a minus the mean of a
 /// size of a: (1, sample_len)
 pub fn col_variance(a: &DataFrame) -> V {

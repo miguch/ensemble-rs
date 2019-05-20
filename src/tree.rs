@@ -12,7 +12,6 @@ use rayon::prelude::*;
 use std::cmp::Ordering;
 
 use std::collections::*;
-use std::time;
 
 #[derive(Debug, Clone)]
 pub struct DecisionTree {
@@ -120,7 +119,7 @@ impl DecisionTree {
         tree
     }
 
-    fn build_tree(&mut self, feature_order: Vec<Vec<usize>>, df: &DataFrame, labels: &DataFrame) {
+    fn build_model(&mut self, feature_order: Vec<Vec<usize>>, df: &DataFrame, labels: &DataFrame) {
         let stats_info = StatsFeature::from_df_cols(&df);
         let root = TreeNode {
             value: stats_info.cols_mean[stats_info.cols_mean.len() - 1],
@@ -379,22 +378,9 @@ impl DecisionTree {
 
 impl Learner for DecisionTree {
     fn fit(&mut self, x: &DataFrame, y: &DataFrame) {
-        let features_len = x.cols();
-        let start = time::SystemTime::now();
-        // Get a list of sorted features and their index in original data frame
-        let features_order: Vec<Vec<usize>> = (0..features_len)
-            .into_par_iter()
-            .map(|col| {
-                let perm = x.sort_column(col);
-                perm.indices
-            })
-            .collect();
-        info!(
-            "global sorting time: {}ms",
-            start.elapsed().unwrap().as_millis()
-        );
+        let features_order = get_df_sorted_perm(&x);
 
-        self.build_tree(features_order, x, y);
+        self.build_model(features_order, x, y);
     }
 
     fn predict(&self, df: &DataFrame) -> DataFrame {

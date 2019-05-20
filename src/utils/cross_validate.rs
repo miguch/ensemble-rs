@@ -36,6 +36,7 @@ impl KFold {
         let samples = x.rows();
         let fold_size = samples / self.splits;
         let mut rng = rand::thread_rng();
+        // Shuffle sample order
         let mut sample_orders: Vec<usize> = (0..samples).into_iter().collect();
         sample_orders.shuffle(&mut rng);
         let mut results = CrossValidateScore {

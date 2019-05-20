@@ -57,5 +57,4 @@ fn main() {
     let folds = cross_validate::KFold::new(3);
     let results = folds.cross_validate(tree, &train_data, &label_data, numeric::r2_score);
     println!("{:?}", results);
-    //    tree.fit(&train_data, &label_data);
 }

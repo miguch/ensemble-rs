@@ -4,7 +4,9 @@ use ndarray::prelude::*;
 use ndarray::Data;
 
 use rayon::prelude::*;
+use std::time;
 
+use log::*;
 use std::cmp::Ordering;
 
 // Type invariant: Each index appears exactly once
@@ -116,4 +118,23 @@ impl PermuteArray for Array2<V> {
 
         Array2::from_shape_vec((self.rows(), self.cols() + 1), v).unwrap()
     }
+}
+
+/// Returns the permutation of each columns in x
+pub fn get_df_sorted_perm(x: &DataFrame) -> Vec<Vec<usize>> {
+    let features_len = x.cols();
+    let start = time::SystemTime::now();
+    // Get a list of sorted features and their index in original data frame
+    let features_order: Vec<Vec<usize>> = (0..features_len)
+        .into_par_iter()
+        .map(|col| {
+            let perm = x.sort_column(col);
+            perm.indices
+        })
+        .collect();
+    debug!(
+        "global sorting time: {}ms",
+        start.elapsed().unwrap().as_millis()
+    );
+    features_order
 }

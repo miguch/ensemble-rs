@@ -78,7 +78,7 @@ fn main() {
     println!("Writing to file");
     data_frame::save_csv(
         &csv_data,
-        data_path.join("result.csv"),
+        data_path.join("SingleTree.csv"),
         &["id", "Predicted"],
     );
 }
