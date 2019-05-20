@@ -51,18 +51,21 @@ fn main() {
 
     let tree_config = {
         let mut configs = HashSet::new();
-        configs.insert(DecisionTreeConfig::MinSamplesLeaf(samples_count / 10000000));
+        configs.insert(DecisionTreeConfig::MinSamplesLeaf(samples_count / 1000000));
         configs.insert(DecisionTreeConfig::MinSamplesSplit(
-            samples_count / 10000000,
+            samples_count / 1000000,
         ));
-        configs.insert(DecisionTreeConfig::MaxBin(300));
+        configs.insert(DecisionTreeConfig::MaxBin(400));
         configs.insert(DecisionTreeConfig::MaxDepth(3));
         configs
     };
 
     let tree = tree::DecisionTree::new_with_config(tree_config);
 
-    let boost_config = vec![GBDTConfig::MaxIterations(100), GBDTConfig::SubSample(0.2)];
+    let boost_config = vec![
+        GBDTConfig::MaxIterations(400),
+        GBDTConfig::SubSample(0.1),
+    ];
 
     let mut boost = GradientBoosting::with_config(boost_config, tree);
 

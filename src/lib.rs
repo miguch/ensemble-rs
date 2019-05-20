@@ -3,3 +3,4 @@ pub mod data_frame;
 pub mod learner;
 pub mod tree;
 pub mod utils;
+pub mod random_forest;
