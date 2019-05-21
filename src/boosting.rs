@@ -3,9 +3,9 @@ use crate::learner::*;
 use crate::utils::numeric;
 use indicatif;
 use log::*;
-use rand::seq::SliceRandom;
+
 use rayon::prelude::*;
-use std::cmp::Ordering;
+
 
 #[derive(Clone)]
 pub struct GradientBoosting<L> {

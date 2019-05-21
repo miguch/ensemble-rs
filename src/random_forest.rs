@@ -2,7 +2,6 @@ use crate::data_frame::*;
 use crate::learner::*;
 use indicatif;
 use rand::seq::SliceRandom;
-use rayon::prelude::*;
 
 pub struct RandomForest<L> {
     /// The base learner
