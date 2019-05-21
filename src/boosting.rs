@@ -5,6 +5,7 @@ use indicatif;
 use log::*;
 
 use rayon::prelude::*;
+use rand::seq::SliceRandom;
 
 
 #[derive(Clone)]
@@ -70,20 +71,22 @@ impl<L: Learner + Clone + Sync + Send> GradientBoosting<L> {
     /// Returns the sub sample x, residual and feature orders
     fn choose_subsample(&self, x: &DataFrame, residual: &DataFrame) -> (DataFrame, DataFrame) {
         let mut orders: Vec<usize> = (0..x.rows()).collect();
-        //        let mut rng = rand::thread_rng();
+        let mut rng = rand::thread_rng();
         //        orders.shuffle(&mut rng);
         // select those samples with higher gradient
+        let sub_sample_size = (self.sub_sample * orders.len() as f64) as usize;
         orders.par_sort_by(|a, b| {
             numeric::float_cmp(residual[[0, *a]].abs(), residual[[0, *b]].abs())
         });
         orders.reverse();
+        // Half high gradient, half shuffled
+        orders[sub_sample_size / 2..].shuffle(&mut rng);
 
-        debug!(
+        info!(
             "{:?} {:?}",
             residual[[0, orders[0]]],
             residual[[0, orders[orders.len() - 1]]]
         );
-        let sub_sample_size = (self.sub_sample * orders.len() as f64) as usize;
         orders.resize(sub_sample_size, 0);
 
         let mut buffer = Vec::with_capacity(sub_sample_size);
@@ -124,7 +127,7 @@ impl<L: Learner + Clone + Sync + Send> Learner for GradientBoosting<L> {
             let new_pred = model.predict(&x);
 
             // Parallel line search to fine the best lr
-            let (best_lr, _r2) = (0..101)
+            let (best_lr, _r2) = (1..101)
                 .into_par_iter()
                 .map(|i| {
                     let lr = 0.01 * i as f64;
