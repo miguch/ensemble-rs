@@ -1,5 +1,6 @@
 use crate::data_frame::*;
 use crate::learner::*;
+use indicatif;
 use rand::seq::SliceRandom;
 use rayon::prelude::*;
 
@@ -17,16 +18,16 @@ pub struct RandomForest<L> {
 #[derive(Clone)]
 pub enum RandomForestConfig {
     NEstimators(usize),
-    SubSample(f64)
+    SubSample(f64),
 }
 
-impl <L: Learner+Clone+Send+Sync> RandomForest<L> {
+impl<L: Learner + Clone + Send + Sync> RandomForest<L> {
     pub fn new(base_learner: L) -> Self {
         Self {
             tree: base_learner,
             learners: vec![],
             n_estimators: 100,
-            sub_sample: 1.0
+            sub_sample: 1.0,
         }
     }
     pub fn from_configs(base_learner: L, configs: Vec<RandomForestConfig>) -> Self {
@@ -34,7 +35,7 @@ impl <L: Learner+Clone+Send+Sync> RandomForest<L> {
         for config in configs {
             match config {
                 RandomForestConfig::NEstimators(e) => forest.n_estimators = e,
-                RandomForestConfig::SubSample(s) => forest.sub_sample = s
+                RandomForestConfig::SubSample(s) => forest.sub_sample = s,
             }
         }
         forest
@@ -61,25 +62,31 @@ impl <L: Learner+Clone+Send+Sync> RandomForest<L> {
     }
 }
 
-impl <L: Learner+Clone+Send+Sync> Learner for RandomForest<L> {
+impl<L: Learner + Clone + Send + Sync> Learner for RandomForest<L> {
     fn fit(&mut self, x: &DataFrame, y: &DataFrame) {
         if !self.learners.is_empty() {
             panic!("Random Forest is already trained");
         }
+        let bar = indicatif::ProgressBar::new(self.n_estimators as u64);
         // train all trees in parallel
-        self.learners = (0..self.n_estimators).into_par_iter().map(|_n| {
-            let (sub_x, sub_y) = self.choose_subsample(&x, &y);
-            let mut tree = self.tree.clone();
-            tree.fit(&sub_x, &sub_y);
-            tree
-        }).collect();
+        self.learners = (0..self.n_estimators)
+            .into_iter()
+            .map(|_n| {
+                let (sub_x, sub_y) = self.choose_subsample(&x, &y);
+                let mut tree = self.tree.clone();
+                tree.fit(&sub_x, &sub_y);
+                bar.inc(1);
+                tree
+            })
+            .collect();
     }
 
     fn predict(&self, df: &DataFrame) -> DataFrame {
         if self.learners.is_empty() {
             panic!("Random Forest is not trained");
         }
-        let mut result_sum = DataFrame::from_shape_vec((1, df.rows()), vec![0.0; df.rows()]).unwrap();
+        let mut result_sum =
+            DataFrame::from_shape_vec((1, df.rows()), vec![0.0; df.rows()]).unwrap();
 
         for l in &self.learners {
             result_sum = result_sum + &l.predict(&df);
@@ -88,6 +95,3 @@ impl <L: Learner+Clone+Send+Sync> Learner for RandomForest<L> {
         result_sum / self.n_estimators as V
     }
 }
-
-
-

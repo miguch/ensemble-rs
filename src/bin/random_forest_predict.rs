@@ -1,6 +1,6 @@
-use ensembles_rs::boosting::{GBDTConfig, GradientBoosting};
 use ensembles_rs::data_frame;
 use ensembles_rs::learner::Learner;
+use ensembles_rs::random_forest::*;
 use ensembles_rs::tree;
 use ensembles_rs::tree::DecisionTreeConfig;
 use ensembles_rs::utils::numeric;
@@ -53,23 +53,27 @@ fn main() {
         let mut configs = HashSet::new();
         configs.insert(DecisionTreeConfig::MinSamplesLeaf(samples_count / 1000000));
         configs.insert(DecisionTreeConfig::MinSamplesSplit(samples_count / 1000000));
-        configs.insert(DecisionTreeConfig::MaxBin(400));
-        configs.insert(DecisionTreeConfig::MaxDepth(3));
+        configs.insert(DecisionTreeConfig::MaxBin(300));
+        configs.insert(DecisionTreeConfig::MaxDepth(2));
+        configs.insert(DecisionTreeConfig::MaxFeatures(4));
         configs
     };
 
     let tree = tree::DecisionTree::new_with_config(tree_config);
 
-    let boost_config = vec![GBDTConfig::MaxIterations(600), GBDTConfig::SubSample(0.25)];
+    let forest_config = vec![
+        RandomForestConfig::SubSample(0.1),
+        RandomForestConfig::NEstimators(100),
+    ];
 
-    let mut boost = GradientBoosting::with_config(boost_config, tree);
+    let mut rf = RandomForest::from_configs(tree, forest_config);
 
-    boost.fit(&train_data, &label_data);
+    rf.fit(&train_data, &label_data);
 
-    let result = boost.predict(&train_data);
+    let result = rf.predict(&train_data);
     println!("Train score: {}", numeric::r2_score(&label_data, &result));
 
-    let result = boost.predict(&test_data);
+    let result = rf.predict(&test_data);
     let mut csv_data = vec![];
     // to csv data frame
     for i in 0..result.cols() {
@@ -78,5 +82,5 @@ fn main() {
     }
     let csv_data = data_frame::DataFrame::from_shape_vec((result.cols(), 2), csv_data).unwrap();
     println!("Writing to file");
-    data_frame::save_csv(&csv_data, data_path.join("GBDT.csv"), &["id", "Predicted"]);
+    data_frame::save_csv(&csv_data, data_path.join("RF.csv"), &["id", "Predicted"]);
 }

@@ -1,5 +1,7 @@
 use crate::data_frame::*;
 use ndarray::*;
+use num_traits::Float;
+use std::cmp::Ordering;
 
 /// a and b should both be of size (1, sample_len)
 pub fn mse_score(a: &DataFrame, b: &DataFrame) -> V {
@@ -53,6 +55,16 @@ pub fn r2_score(true_y: &DataFrame, pred_y: &DataFrame) -> V {
         mean_diff += (true_y[[0, i]] - true_mean).powi(2);
     }
     1.0 - (square_error / mean_diff)
+}
+
+pub fn float_cmp<F: Float + PartialOrd>(a: F, b: F) -> Ordering {
+    if a < b {
+        Ordering::Less
+    } else if a > b {
+        Ordering::Greater
+    } else {
+        Ordering::Equal
+    }
 }
 
 // Test will only pass if V is f64

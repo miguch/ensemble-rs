@@ -19,7 +19,7 @@ pub struct GradientBoosting<L> {
     /// The fraction of samples to train fir individual weak learner
     pub sub_sample: f64,
     /// The initial value of the model
-    init_value: V
+    init_value: V,
 }
 
 #[derive(PartialEq, Clone)]
@@ -36,7 +36,7 @@ impl<L: Learner + Clone + Sync + Send> GradientBoosting<L> {
             learning_rates: vec![],
             max_iterations: 100,
             sub_sample: 1.0,
-            init_value: 0.0
+            init_value: 0.0,
         }
     }
 
@@ -69,9 +69,20 @@ impl<L: Learner + Clone + Sync + Send> GradientBoosting<L> {
 
     /// Returns the sub sample x, residual and feature orders
     fn choose_subsample(&self, x: &DataFrame, residual: &DataFrame) -> (DataFrame, DataFrame) {
-        let mut rng = rand::thread_rng();
         let mut orders: Vec<usize> = (0..x.rows()).collect();
-        orders.shuffle(&mut rng);
+        //        let mut rng = rand::thread_rng();
+        //        orders.shuffle(&mut rng);
+        // select those samples with higher gradient
+        orders.par_sort_by(|a, b| {
+            numeric::float_cmp(residual[[0, *a]].abs(), residual[[0, *b]].abs())
+        });
+        orders.reverse();
+
+        debug!(
+            "{:?} {:?}",
+            residual[[0, orders[0]]],
+            residual[[0, orders[orders.len() - 1]]]
+        );
         let sub_sample_size = (self.sub_sample * orders.len() as f64) as usize;
         orders.resize(sub_sample_size, 0);
 
@@ -98,7 +109,8 @@ impl<L: Learner + Clone + Sync + Send> Learner for GradientBoosting<L> {
 
         let samples = y.cols();
         // Initialize F_0(x) to constant 0
-        let mut model_pred = DataFrame::from_shape_vec((1, y.cols()), vec![self.init_value; samples]).unwrap();
+        let mut model_pred =
+            DataFrame::from_shape_vec((1, y.cols()), vec![self.init_value; samples]).unwrap();
 
         info!("Start training...");
 
@@ -112,27 +124,24 @@ impl<L: Learner + Clone + Sync + Send> Learner for GradientBoosting<L> {
             let new_pred = model.predict(&x);
 
             // Parallel line search to fine the best lr
-            let (best_lr, _r2) = (0..101).into_par_iter().map(|i| {
-                let lr = 0.01 * i as f64;
-                let pred = &model_pred + &(&new_pred * lr);
-                let r2 =  numeric::r2_score(y, &pred);
-                (lr, r2)
-            }).max_by(|a, b| {
-                if a.1 < b.1 {
-                    Ordering::Less
-                } else if a.1 > b.1 {
-                    Ordering::Greater
-                } else {
-                    Ordering::Equal
-                }
-            }).unwrap();
+            let (best_lr, _r2) = (0..101)
+                .into_par_iter()
+                .map(|i| {
+                    let lr = 0.01 * i as f64;
+                    let pred = &model_pred + &(&new_pred * lr);
+                    let r2 = numeric::r2_score(y, &pred);
+                    (lr, r2)
+                })
+                .max_by(|a, b| numeric::float_cmp(a.1, b.1))
+                .unwrap();
             info!("lr {} at step {}.", best_lr, _i);
 
             self.learning_rates.push(best_lr);
             model_pred = model_pred + new_pred * best_lr;
 
             info!("Pred Score: {}\n", numeric::r2_score(y, &model_pred));
-            println!("{}", numeric::r2_score(y, &model_pred));
+            println!("lr: {}", best_lr);
+            println!("r2: {}", numeric::r2_score(y, &model_pred));
 
             self.learners.push(model);
             // Update progress bar
