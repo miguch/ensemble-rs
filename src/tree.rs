@@ -97,7 +97,7 @@ impl DecisionTree {
             max_depth: std::usize::MAX,
             max_features: std::usize::MAX,
             min_samples_leaf: 1,
-            min_samples_split: 2,
+            min_samples_split: 3,
             max_bin: 255,
         }
     }

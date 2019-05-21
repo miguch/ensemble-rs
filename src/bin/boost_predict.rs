@@ -60,7 +60,7 @@ fn main() {
 
     let tree = tree::DecisionTree::new_with_config(tree_config);
 
-    let boost_config = vec![GBDTConfig::MaxIterations(600), GBDTConfig::SubSample(0.25)];
+    let boost_config = vec![GBDTConfig::MaxIterations(400), GBDTConfig::SubSample(0.25)];
 
     let mut boost = GradientBoosting::with_config(boost_config, tree);
 

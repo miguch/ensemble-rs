@@ -4,9 +4,8 @@ use crate::utils::numeric;
 use indicatif;
 use log::*;
 
-use rayon::prelude::*;
 use rand::seq::SliceRandom;
-
+use rayon::prelude::*;
 
 #[derive(Clone)]
 pub struct GradientBoosting<L> {
@@ -71,22 +70,11 @@ impl<L: Learner + Clone + Sync + Send> GradientBoosting<L> {
     /// Returns the sub sample x, residual and feature orders
     fn choose_subsample(&self, x: &DataFrame, residual: &DataFrame) -> (DataFrame, DataFrame) {
         let mut orders: Vec<usize> = (0..x.rows()).collect();
-        let mut rng = rand::thread_rng();
-        //        orders.shuffle(&mut rng);
-        // select those samples with higher gradient
         let sub_sample_size = (self.sub_sample * orders.len() as f64) as usize;
-        orders.par_sort_by(|a, b| {
-            numeric::float_cmp(residual[[0, *a]].abs(), residual[[0, *b]].abs())
-        });
-        orders.reverse();
-        // Half high gradient, half shuffled
-        orders[sub_sample_size / 2..].shuffle(&mut rng);
+        let mut rng = rand::thread_rng();
+        // select those samples with higher gradient
+        orders.shuffle(&mut rng);
 
-        info!(
-            "{:?} {:?}",
-            residual[[0, orders[0]]],
-            residual[[0, orders[orders.len() - 1]]]
-        );
         orders.resize(sub_sample_size, 0);
 
         let mut buffer = Vec::with_capacity(sub_sample_size);

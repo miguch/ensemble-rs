@@ -1,8 +1,10 @@
 use crate::data_frame::*;
 use crate::learner::*;
-use indicatif;
+use crate::utils::numeric;
+use log::*;
 use rand::seq::SliceRandom;
 
+#[derive(Clone)]
 pub struct RandomForest<L> {
     /// The base learner
     pub tree: L,
@@ -66,7 +68,6 @@ impl<L: Learner + Clone + Send + Sync> Learner for RandomForest<L> {
         if !self.learners.is_empty() {
             panic!("Random Forest is already trained");
         }
-        let bar = indicatif::ProgressBar::new(self.n_estimators as u64);
         // train all trees in parallel
         self.learners = (0..self.n_estimators)
             .into_iter()
@@ -74,7 +75,9 @@ impl<L: Learner + Clone + Send + Sync> Learner for RandomForest<L> {
                 let (sub_x, sub_y) = self.choose_subsample(&x, &y);
                 let mut tree = self.tree.clone();
                 tree.fit(&sub_x, &sub_y);
-                bar.inc(1);
+                let pred = tree.predict(&x);
+                info!("score at step {}: {}", _n, numeric::r2_score(&y, &pred));
+
                 tree
             })
             .collect();

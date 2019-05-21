@@ -51,10 +51,9 @@ fn main() {
 
     let tree_config = {
         let mut configs = HashSet::new();
-        configs.insert(DecisionTreeConfig::MinSamplesLeaf(samples_count / 1000000));
-        configs.insert(DecisionTreeConfig::MinSamplesSplit(samples_count / 1000000));
-        configs.insert(DecisionTreeConfig::MaxBin(300));
-        configs.insert(DecisionTreeConfig::MaxDepth(2));
+        configs.insert(DecisionTreeConfig::MinSamplesLeaf(samples_count / 2000000));
+        configs.insert(DecisionTreeConfig::MinSamplesSplit(samples_count / 2000000));
+        configs.insert(DecisionTreeConfig::MaxBin(400));
         configs.insert(DecisionTreeConfig::MaxFeatures(4));
         configs
     };
@@ -62,8 +61,8 @@ fn main() {
     let tree = tree::DecisionTree::new_with_config(tree_config);
 
     let forest_config = vec![
-        RandomForestConfig::SubSample(0.1),
-        RandomForestConfig::NEstimators(100),
+        RandomForestConfig::SubSample(0.10),
+        RandomForestConfig::NEstimators(350),
     ];
 
     let mut rf = RandomForest::from_configs(tree, forest_config);
