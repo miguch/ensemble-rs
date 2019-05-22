@@ -3,11 +3,12 @@ use crate::learner::*;
 use crate::utils::numeric;
 use indicatif;
 use log::*;
+use serde::{Serialize, Deserialize};
 
 use rand::seq::SliceRandom;
 use rayon::prelude::*;
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct GradientBoosting<L> {
     pub weak_learner: L,
     /// Fitted learners, each learner is initially cloned from weak_learner
@@ -22,7 +23,7 @@ pub struct GradientBoosting<L> {
     init_value: V,
 }
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Serialize, Deserialize)]
 pub enum GBDTConfig {
     MaxIterations(usize),
     SubSample(f64),

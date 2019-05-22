@@ -7,13 +7,14 @@ use data_frame::*;
 use log::*;
 use num_traits::*;
 use rand::prelude::*;
+use serde::{Serialize, Deserialize};
 
 use rayon::prelude::*;
 use std::cmp::Ordering;
 
 use std::collections::*;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DecisionTree {
     /// Nodes in the tree as a list of nodes
     pub nodes: Vec<TreeNode<V>>,
@@ -29,7 +30,7 @@ pub struct DecisionTree {
     pub max_bin: usize,
 }
 
-#[derive(PartialEq, Eq, Hash, Clone)]
+#[derive(PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
 pub enum DecisionTreeConfig {
     MaxDepth(usize),
     MaxFeatures(usize),
@@ -38,7 +39,7 @@ pub enum DecisionTreeConfig {
     MaxBin(usize),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum NodeInfo<V> {
     Leaf,
     Stem {
@@ -53,7 +54,7 @@ pub enum NodeInfo<V> {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TreeNode<V> {
     pub value: V,
     pub index: usize,

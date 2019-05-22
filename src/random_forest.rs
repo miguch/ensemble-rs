@@ -3,8 +3,9 @@ use crate::learner::*;
 use crate::utils::numeric;
 use log::*;
 use rand::seq::SliceRandom;
+use serde::{Serialize, Deserialize};
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct RandomForest<L> {
     /// The base learner
     pub tree: L,
@@ -16,7 +17,7 @@ pub struct RandomForest<L> {
     pub sub_sample: f64,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub enum RandomForestConfig {
     NEstimators(usize),
     SubSample(f64),
@@ -65,9 +66,6 @@ impl<L: Learner + Clone + Send + Sync> RandomForest<L> {
 
 impl<L: Learner + Clone + Send + Sync> Learner for RandomForest<L> {
     fn fit(&mut self, x: &DataFrame, y: &DataFrame) {
-        if !self.learners.is_empty() {
-            panic!("Random Forest is already trained");
-        }
         // train all trees in parallel
         self.learners = (0..self.n_estimators)
             .into_iter()
@@ -76,7 +74,7 @@ impl<L: Learner + Clone + Send + Sync> Learner for RandomForest<L> {
                 let mut tree = self.tree.clone();
                 tree.fit(&sub_x, &sub_y);
                 let pred = tree.predict(&x);
-                info!("score at step {}: {}", _n, numeric::r2_score(&y, &pred));
+                info!("score at step {}: {}", self.learners.len(), numeric::r2_score(&y, &pred));
 
                 tree
             })
@@ -94,6 +92,6 @@ impl<L: Learner + Clone + Send + Sync> Learner for RandomForest<L> {
             result_sum = result_sum + &l.predict(&df);
         }
 
-        result_sum / self.n_estimators as V
+        result_sum / self.learners.len() as V
     }
 }

@@ -13,13 +13,17 @@ use pretty_env_logger;
 
 use std::path::*;
 use std::time;
+use std::fs::File;
+use std::io::{Write, Read};
 
 static DATA_DIR: &str = "../data";
+static MODEL_DIR: &str = "../model";
 
 fn main() {
     pretty_env_logger::init();
 
     let data_path = Path::new(DATA_DIR);
+    let model_path = Path::new(MODEL_DIR);
     let start = time::SystemTime::now();
     debug!("Loading Train Data");
     let train_data = data_frame::read_csvs(
@@ -60,9 +64,16 @@ fn main() {
 
     let tree = tree::DecisionTree::new_with_config(tree_config);
 
-    let boost_config = vec![GBDTConfig::MaxIterations(400), GBDTConfig::SubSample(0.25)];
+    let boost_config = vec![GBDTConfig::MaxIterations(100), GBDTConfig::SubSample(0.25)];
 
     let mut boost = GradientBoosting::with_config(boost_config, tree);
+
+    if model_path.join("boost.json").exists() {
+        println!("Previous model found, reading in model...");
+        let mut serial: String = String::new();
+        File::open(model_path.join("boost.json")).unwrap().read_to_string(&mut serial).unwrap();
+        boost = serde_json::from_str(&serial).unwrap();
+    }
 
     boost.fit(&train_data, &label_data);
 
@@ -79,4 +90,8 @@ fn main() {
     let csv_data = data_frame::DataFrame::from_shape_vec((result.cols(), 2), csv_data).unwrap();
     println!("Writing to file");
     data_frame::save_csv(&csv_data, data_path.join("GBDT.csv"), &["id", "Predicted"]);
+
+    let serial = serde_json::to_string(&boost).unwrap();
+    let mut file = File::create(model_path.join("boost.json")).unwrap();
+    file.write_all(serial.as_bytes()).unwrap();
 }

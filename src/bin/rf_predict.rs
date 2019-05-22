@@ -6,6 +6,7 @@ use ensembles_rs::tree::DecisionTreeConfig;
 use ensembles_rs::utils::numeric;
 use rayon::prelude::*;
 use std::collections::HashSet;
+use serde_json;
 
 use log::*;
 
@@ -13,13 +14,17 @@ use pretty_env_logger;
 
 use std::path::*;
 use std::time;
+use std::fs::File;
+use std::io::{Write, Read};
 
 static DATA_DIR: &str = "../data";
+static MODEL_DIR: &str = "../model";
 
 fn main() {
     pretty_env_logger::init();
 
     let data_path = Path::new(DATA_DIR);
+    let model_path = Path::new(MODEL_DIR);
     let start = time::SystemTime::now();
     debug!("Loading Train Data");
     let train_data = data_frame::read_csvs(
@@ -53,7 +58,7 @@ fn main() {
         let mut configs = HashSet::new();
         configs.insert(DecisionTreeConfig::MinSamplesLeaf(samples_count / 2000000));
         configs.insert(DecisionTreeConfig::MinSamplesSplit(samples_count / 2000000));
-        configs.insert(DecisionTreeConfig::MaxBin(400));
+        configs.insert(DecisionTreeConfig::MaxBin(500));
         configs.insert(DecisionTreeConfig::MaxFeatures(4));
         configs
     };
@@ -61,11 +66,18 @@ fn main() {
     let tree = tree::DecisionTree::new_with_config(tree_config);
 
     let forest_config = vec![
-        RandomForestConfig::SubSample(0.10),
-        RandomForestConfig::NEstimators(350),
+        RandomForestConfig::SubSample(0.15),
+        RandomForestConfig::NEstimators(100),
     ];
 
     let mut rf = RandomForest::from_configs(tree, forest_config);
+
+    if model_path.join("RF.json").exists() {
+        println!("Previous model found, reading in model...");
+        let mut serial: String = String::new();
+        File::open(model_path.join("RF.json")).unwrap().read_to_string(&mut serial).unwrap();
+        rf = serde_json::from_str(&serial).unwrap();
+    }
 
     rf.fit(&train_data, &label_data);
 
@@ -82,4 +94,8 @@ fn main() {
     let csv_data = data_frame::DataFrame::from_shape_vec((result.cols(), 2), csv_data).unwrap();
     println!("Writing to file");
     data_frame::save_csv(&csv_data, data_path.join("RF.csv"), &["id", "Predicted"]);
+
+    let serial = serde_json::to_string(&rf).unwrap();
+    let mut file = File::create(model_path.join("RF.json")).unwrap();
+    file.write_all(serial.as_bytes()).unwrap();
 }
