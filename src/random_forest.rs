@@ -67,18 +67,19 @@ impl<L: Learner + Clone + Send + Sync> RandomForest<L> {
 impl<L: Learner + Clone + Send + Sync> Learner for RandomForest<L> {
     fn fit(&mut self, x: &DataFrame, y: &DataFrame) {
         // train all trees in parallel
-        self.learners = (0..self.n_estimators)
+        let new_learners: Vec<L> = (0..self.n_estimators)
             .into_iter()
             .map(|_n| {
                 let (sub_x, sub_y) = self.choose_subsample(&x, &y);
                 let mut tree = self.tree.clone();
                 tree.fit(&sub_x, &sub_y);
                 let pred = tree.predict(&x);
-                info!("score at step {}: {}", self.learners.len(), numeric::r2_score(&y, &pred));
+                info!("score at step {}: {}", self.learners.len() + _n, numeric::r2_score(&y, &pred));
 
                 tree
             })
             .collect();
+        self.learners.extend(new_learners);
     }
 
     fn predict(&self, df: &DataFrame) -> DataFrame {

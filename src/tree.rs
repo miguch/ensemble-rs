@@ -163,10 +163,11 @@ impl DecisionTree {
                     // No split when there are not many samples in node or
                     // samples can not be divided to bins
                     if curr_samples.len() < self.min_samples_split
-                        || curr_samples.len() < self.max_bin
                     {
                         return None;
                     }
+
+                    let curr_bins = self.max_bin.min(curr_samples.len());
 
                     // local thread Random generator
                     let mut rng = rand::thread_rng();
@@ -177,9 +178,9 @@ impl DecisionTree {
                     // only take the max_features number of features from the list
                     features.resize(self.max_features.min(df.cols()), 0);
 
-                    let bin_size = curr_samples.len() / self.max_bin;
+                    let bin_size = curr_samples.len() / curr_bins;
                     // split points of bins, k bins means k-1 split points
-                    let bins: Vec<usize> = (1..self.max_bin)
+                    let bins: Vec<usize> = (1..curr_bins)
                         .into_iter()
                         .map(|b_i| bin_size * b_i)
                         .collect();
@@ -198,13 +199,13 @@ impl DecisionTree {
                             let mut best_left_err: V = 0.0;
                             let mut feat_labels = Vec::with_capacity(curr_samples.len());
                             let orders: &Vec<usize> = &feature_order[*feat_index];
-                            let mut bins_index = vec![std::usize::MAX; self.max_bin - 1];
+                            let mut bins_index = vec![std::usize::MAX; curr_bins - 1];
                             for index in orders {
                                 if curr_samples.contains(index) {
                                     // set split index for k-1 split points
                                     if feat_labels.len() % bin_size == 0
                                         && feat_labels.len() != 0
-                                        && feat_labels.len() < bin_size * self.max_bin
+                                        && feat_labels.len() < bin_size * curr_bins
                                     {
                                         bins_index[feat_labels.len() / bin_size - 1] = *index;
                                     }
