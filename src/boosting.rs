@@ -115,16 +115,16 @@ impl<L: Learner + Clone + Sync + Send> Learner for GradientBoosting<L> {
 
             let new_pred = model.predict(&x);
 
-            // Parallel line search to fine the best lr
+            // Parallel line search to fine the best lr to minimize mse loss
             let (best_lr, _r2) = (1..101)
                 .into_par_iter()
                 .map(|i| {
                     let lr = 0.01 * i as f64;
                     let pred = &model_pred + &(&new_pred * lr);
-                    let r2 = numeric::r2_score(y, &pred);
-                    (lr, r2)
+                    let mse = numeric::mse_score(y, &pred);
+                    (lr, mse)
                 })
-                .max_by(|a, b| numeric::float_cmp(a.1, b.1))
+                .min_by(|a, b| numeric::float_cmp(a.1, b.1))
                 .unwrap();
             info!("lr {} at step {}.", best_lr, _i);
 

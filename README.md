@@ -1,6 +1,6 @@
 # ensembles-rs
 
-A Rust crate implementing regression decision tree and boosting ensemble.
+A Rust crate implementing regression decision tree, Gradient Boosting and Random Forest ensemble.
 
 ## Bins
 
