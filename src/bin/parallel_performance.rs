@@ -19,7 +19,7 @@ use std::time;
 static DATA_DIR: &str = "../data";
 
 fn main() {
-    pretty_env_logger::init();
+    pretty_env_logger::try_init_timed_custom_env("ENSEM_LOG").unwrap();
 
     // Get threads number from cli params
     let params: Vec<String> = env::args().collect();

@@ -1,7 +1,6 @@
 use crate::data_frame::*;
 use crate::learner::*;
 use crate::utils::numeric;
-use indicatif;
 use log::*;
 use serde::{Serialize, Deserialize};
 
@@ -106,8 +105,6 @@ impl<L: Learner + Clone + Sync + Send> Learner for GradientBoosting<L> {
 
         info!("Start training...");
 
-        //Add a progress bar here
-        let indif = indicatif::ProgressBar::new(self.max_iterations as u64);
         for _i in 0..self.max_iterations {
             let residual = y - &model_pred;
             let (sub_x, sub_residual) = self.choose_subsample(x, &residual);
@@ -136,8 +133,6 @@ impl<L: Learner + Clone + Sync + Send> Learner for GradientBoosting<L> {
             println!("r2: {}", numeric::r2_score(y, &model_pred));
 
             self.learners.push(model);
-            // Update progress bar
-            indif.inc(1);
         }
     }
 

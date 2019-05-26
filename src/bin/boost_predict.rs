@@ -20,7 +20,7 @@ static DATA_DIR: &str = "../data";
 static MODEL_DIR: &str = "../model";
 
 fn main() {
-    pretty_env_logger::init();
+    pretty_env_logger::try_init_timed_custom_env("ENSEM_LOG").unwrap();
 
     let data_path = Path::new(DATA_DIR);
     let model_path = Path::new(MODEL_DIR);
@@ -58,13 +58,13 @@ fn main() {
         configs.insert(DecisionTreeConfig::MinSamplesLeaf(samples_count / 1000000));
         configs.insert(DecisionTreeConfig::MinSamplesSplit(samples_count / 1000000));
         configs.insert(DecisionTreeConfig::MaxBin(400));
-        configs.insert(DecisionTreeConfig::MaxDepth(3));
+        configs.insert(DecisionTreeConfig::MaxDepth(4));
         configs
     };
 
     let tree = tree::DecisionTree::new_with_config(tree_config);
 
-    let boost_config = vec![GBDTConfig::MaxIterations(100), GBDTConfig::SubSample(0.15)];
+    let boost_config = vec![GBDTConfig::MaxIterations(100), GBDTConfig::SubSample(0.25)];
 
     let mut boost = GradientBoosting::with_config(boost_config, tree);
 

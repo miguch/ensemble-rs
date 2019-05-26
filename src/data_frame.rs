@@ -41,10 +41,7 @@ pub fn df_from_data(buf: Vec<Vec<V>>) -> DataFrame {
         Array2::zeros((0, 0))
     } else {
         let shape = (buf.len(), buf[0].len());
-        let mut flatten = Vec::with_capacity(shape.0 * shape.1);
-        for row in buf {
-            flatten.extend(row);
-        }
+        let flatten = buf.into_iter().flatten().collect();
         let arr = Array2::from_shape_vec(shape, flatten).unwrap();
         arr
     }

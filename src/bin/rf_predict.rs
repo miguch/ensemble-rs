@@ -21,7 +21,7 @@ static DATA_DIR: &str = "../data";
 static MODEL_DIR: &str = "../model";
 
 fn main() {
-    pretty_env_logger::init();
+    pretty_env_logger::try_init_timed_custom_env("ENSEM_LOG").unwrap();
 
     let data_path = Path::new(DATA_DIR);
     let model_path = Path::new(MODEL_DIR);
