@@ -215,6 +215,7 @@ impl DecisionTree {
                             // search each bins for resulting split info
                             for bin in &bins {
                                 let (left, right) = feat_labels.split_at(*bin);
+                                // let left_weight = *bin as V / curr_samples.len() as V;
                                 let left_sqr_err = slice_variance(left);
                                 let right_sqr_err = slice_variance(right);
                                 let curr_sqr_err = left_sqr_err + right_sqr_err;

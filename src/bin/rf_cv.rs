@@ -47,15 +47,15 @@ fn main() {
         configs.insert(DecisionTreeConfig::MinSamplesLeaf(samples_count / 2000000));
         configs.insert(DecisionTreeConfig::MinSamplesSplit(samples_count / 2000000));
         configs.insert(DecisionTreeConfig::MaxBin(500));
-        configs.insert(DecisionTreeConfig::MaxFeatures(4));
+        configs.insert(DecisionTreeConfig::MaxFeatures(3));
         configs
     };
 
     let tree = tree::DecisionTree::new_with_config(tree_config);
 
     let forest_config = vec![
-        RandomForestConfig::SubSample(0.02),
-        RandomForestConfig::NEstimators(150),
+        RandomForestConfig::SubSample(0.03),
+        RandomForestConfig::NEstimators(100),
     ];
 
     let rf = RandomForest::from_configs(tree, forest_config);

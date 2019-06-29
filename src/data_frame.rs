@@ -8,7 +8,7 @@ use ndarray::*;
 use std::io::{BufWriter, Write};
 
 /// The type used for values in dataframe
-pub type V = f64;
+pub type V = f32;
 
 pub type DataFrame = Array2<V>;
 
@@ -91,7 +91,7 @@ fn load_csv(file_path: &PathBuf) -> Vec<Vec<V>> {
     };
     let mut reader = csv::ReaderBuilder::new()
         .has_headers(false)
-        .from_reader(file);
+        .from_reader(std::io::BufReader::new(file));
     let mut data_frame = Vec::new();
     for result in reader.records() {
         let record = result.unwrap();

@@ -13,7 +13,7 @@ pub struct GradientBoosting<L> {
     /// Fitted learners, each learner is initially cloned from weak_learner
     pub learners: Vec<L>,
     /// How each learner affect the model
-    learning_rates: Vec<f64>,
+    learning_rates: Vec<V>,
     /// The number of weak learners to fit
     pub max_iterations: usize,
     /// The fraction of samples to train fir individual weak learner
@@ -92,16 +92,17 @@ impl<L: Learner + Clone + Sync + Send> GradientBoosting<L> {
 
 impl<L: Learner + Clone + Sync + Send> Learner for GradientBoosting<L> {
     fn fit(&mut self, x: &DataFrame, y: &DataFrame) {
-        if !self.learners.is_empty() {
-            panic!("Model is already trained!");
-        }
 
-        self.init_value = y.row(0).iter().sum::<V>() / y.cols() as V;
-
+//        self.init_value = y.row(0).iter().sum::<V>() / y.cols() as V;
         let samples = y.cols();
-        // Initialize F_0(x) to constant 0
-        let mut model_pred =
-            DataFrame::from_shape_vec((1, y.cols()), vec![self.init_value; samples]).unwrap();
+        let mut model_pred = if self.learners.is_empty() {
+            // Initialize F_0(x) to constant 0
+            self.init_value = 0.0;
+            DataFrame::from_shape_vec((1, y.cols()), vec![self.init_value; samples]).unwrap()
+        } else {
+            self.predict(x)
+        };
+
 
         info!("Start training...");
 
@@ -116,21 +117,22 @@ impl<L: Learner + Clone + Sync + Send> Learner for GradientBoosting<L> {
             let (best_lr, _r2) = (1..101)
                 .into_par_iter()
                 .map(|i| {
-                    let lr = 0.01 * i as f64;
+                    let lr = 0.01 * i as V;
                     let pred = &model_pred + &(&new_pred * lr);
                     let mse = numeric::mse_score(y, &pred);
                     (lr, mse)
                 })
                 .min_by(|a, b| numeric::float_cmp(a.1, b.1))
                 .unwrap();
-            info!("lr {} at step {}.", best_lr, _i);
 
             self.learning_rates.push(best_lr);
             model_pred = model_pred + new_pred * best_lr;
 
+            info!("lr {} at step {}.", best_lr, self.learners.len());
+
             info!("Pred Score: {}\n", numeric::r2_score(y, &model_pred));
-            println!("lr: {}", best_lr);
-            println!("r2: {}", numeric::r2_score(y, &model_pred));
+//            println!("lr: {}", best_lr);
+//            println!("r2: {}", numeric::r2_score(y, &model_pred));
 
             self.learners.push(model);
         }

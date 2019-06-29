@@ -58,13 +58,13 @@ fn main() {
         configs.insert(DecisionTreeConfig::MinSamplesLeaf(samples_count / 1000000));
         configs.insert(DecisionTreeConfig::MinSamplesSplit(samples_count / 1000000));
         configs.insert(DecisionTreeConfig::MaxBin(400));
-        configs.insert(DecisionTreeConfig::MaxDepth(4));
+        configs.insert(DecisionTreeConfig::MaxDepth(10));
         configs
     };
 
     let tree = tree::DecisionTree::new_with_config(tree_config);
 
-    let boost_config = vec![GBDTConfig::MaxIterations(100), GBDTConfig::SubSample(0.25)];
+    let boost_config = vec![GBDTConfig::MaxIterations(100), GBDTConfig::SubSample(0.15)];
 
     let mut boost = GradientBoosting::with_config(boost_config, tree);
 
