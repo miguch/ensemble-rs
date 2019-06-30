@@ -7,13 +7,13 @@ A Rust crate implementing regression decision tree, Gradient Boosting and Random
 **cross validation**:
 
 ```
-cargo run --bin cv
+cargo run --release --bin cv
 ```
 
 **predict test set**:
 
 ```
-cargo run --bin predict
+cargo run --release --bin predict
 ```
 
 **test parallel performance**:
